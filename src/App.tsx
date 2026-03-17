@@ -74,14 +74,14 @@ function App() {
         </div>
       )}
 
-      {isTableDataLoading || isTableDataRefreshing ? (
+      {isTableDataLoading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       ) : (
         <div>
           <div className="mb-5">
-            <DataTable data={tableData} onDataChange={refreshTableData} />
+            <DataTable data={tableData} onDataChange={refreshTableData} isDataRefreshing={isTableDataRefreshing} />
           </div>
 
           <PlotTabs tableData={tableData} toggleDrawer={toggleDrawer} />

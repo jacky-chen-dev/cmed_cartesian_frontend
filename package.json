@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ant-design/icons": "5.x",
     "@headlessui/react": "^2.2.4",
     "antd": "^5.26.0",
     "axios": "^1.9.0",

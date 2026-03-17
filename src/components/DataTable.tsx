@@ -3,13 +3,20 @@ import { Axis, DataPoint, TableData } from "../types";
 import { api } from "../api";
 import useMessage from "antd/es/message/useMessage";
 import { message, Button } from "antd";
+import useChangeStack from "../hooks/useChangeStack";
+import { UndoOutlined, RedoOutlined } from "@ant-design/icons";
 
 interface DataTableProps {
   data: TableData;
   onDataChange: () => void;
+  isDataRefreshing?: boolean;
 }
 
-export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
+export const DataTable: React.FC<DataTableProps> = ({
+  data,
+  onDataChange,
+  isDataRefreshing,
+}) => {
   const [messageApi, contextHolder] = useMessage();
   const [newColumnName, setNewColumnName] = useState("");
   const [newRowName, setNewRowName] = useState("");
@@ -42,6 +49,14 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
   const [isDeletingRow, setIsDeletingRow] = useState<boolean>(false);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [isImporting, setIsImporting] = useState<boolean>(false);
+  const [isUpdatingCell, setIsUpdatingCell] = useState<boolean>(false);
+  const [isUpdatingAnnotation, setIsUpdatingAnnotation] =
+    useState<boolean>(false);
+  const [isUpdatingRowName, setIsUpdatingRowName] = useState<boolean>(false);
+  const [isUndoing, setIsUndoing] = useState<boolean>(false);
+  const [isRedoing, setIsRedoing] = useState<boolean>(false);
+
+  const { pushChange, undo, redo, canUndo, canRedo } = useChangeStack();
 
   const handleAddColumn = async () => {
     if (!newColumnName.trim()) return;
@@ -110,6 +125,14 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
     // Only update if the value has actually changed
     if (newValue !== currentValue) {
       try {
+        setIsUpdatingCell(true);
+        pushChange({
+          type: "cell",
+          rowName: editCellInfo.rowName,
+          columnName: editCellInfo.columnName,
+          previousValue: currentValue,
+          nextValue: newValue,
+        });
         await api.updateCell(
           editCellInfo.rowName,
           editCellInfo.columnName,
@@ -118,6 +141,8 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
         onDataChange();
       } catch (error) {
         console.error("Error updating cell:", error);
+      } finally {
+        setIsUpdatingCell(false);
       }
     }
 
@@ -148,6 +173,13 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
       }
 
       try {
+        setIsUpdatingAnnotation(true);
+        pushChange({
+          type: "annotation",
+          rowName: editAnnotationInfo.rowName,
+          previousAnnotation: currentValue,
+          nextAnnotation: editAnnotationInfo.value,
+        });
         await api.updateAnnotation(
           editAnnotationInfo.rowName,
           editAnnotationInfo.value
@@ -156,9 +188,10 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
         onDataChange();
       } catch (error) {
         console.error("Error updating annotation:", error);
+      } finally {
+        setIsUpdatingAnnotation(false);
       }
     } else {
-      // If the value hasn't changed, just reset the edit state
       setEditAnnotationInfo(null);
     }
   };
@@ -174,7 +207,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
     const currentRow = data.dataPoints.find(
       (row) => row.name === editRowNameInfo.rowName
     );
-    const currentValue = currentRow?.name || 0;
+    const currentValue = currentRow?.name || "";
 
     if (editRowNameInfo.value !== currentValue) {
       if (editRowNameInfo.value === "") {
@@ -186,14 +219,22 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
       }
 
       try {
+        setIsUpdatingRowName(true);
+        pushChange({
+          type: "rowName",
+          rowName: editRowNameInfo.rowName,
+          previousRowName: currentValue,
+          nextRowName: editRowNameInfo.value,
+        });
         await api.updateRowName(editRowNameInfo.rowName, editRowNameInfo.value);
         setEditRowNameInfo(null);
         onDataChange();
       } catch (error) {
         console.error("Error updating row name:", error);
+      } finally {
+        setIsUpdatingRowName(false);
       }
     } else {
-      // If the value hasn't changed, just reset the edit state
       setEditRowNameInfo(null);
     }
   };
@@ -344,33 +385,40 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
   };
 
   return (
-    <div className="overflow-x-auto">
-      {contextHolder}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold mb-4">Data Table</h2>
-        <div className="flex space-x-2">
-          <Button
-            onClick={handleExportTable}
-            loading={isExporting}
-            className="text-sm"
-          >
-            Export Table
-          </Button>
-          <Button
-            onClick={handleImportClick}
-            loading={isImporting}
-            className="text-sm"
-          >
-            Import Table
-          </Button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImportTable}
-            accept=".json"
-            disabled={isImporting}
-            className="hidden"
-          />
+    <div className="relative">
+      {isDataRefreshing && (
+        <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center z-10">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        {contextHolder}
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold mb-4">Data Table</h2>
+          <div className="flex space-x-2">
+            <Button
+              onClick={handleExportTable}
+              loading={isExporting}
+              className="text-sm"
+            >
+              Export Table
+            </Button>
+            <Button
+              onClick={handleImportClick}
+              loading={isImporting}
+              className="text-sm"
+            >
+              Import Table
+            </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImportTable}
+              accept=".json"
+              disabled={isImporting}
+              className="hidden"
+            />
+          </div>
         </div>
       </div>
 
@@ -465,6 +513,88 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
         </Button>
       </div>
 
+      <div className="w-full flex justify-end items-center mb-2 gap-2">
+        <Button
+          icon={<UndoOutlined />}
+          disabled={!canUndo || isDataRefreshing || isUndoing || isRedoing}
+          loading={isUndoing}
+          onClick={async () => {
+            try {
+              setIsUndoing(true);
+              const lastChange = undo();
+              if (lastChange) {
+                if (lastChange.type === "cell" && lastChange.columnName) {
+                  await api.updateCell(
+                    lastChange.rowName,
+                    lastChange.columnName,
+                    lastChange.previousValue ?? 0
+                  );
+                } else if (lastChange.type === "annotation") {
+                  await api.updateAnnotation(
+                    lastChange.rowName,
+                    lastChange.previousAnnotation ?? ""
+                  );
+                } else if (lastChange.type === "rowName") {
+                  const currentRowName =
+                    lastChange.nextRowName ?? lastChange.rowName;
+                  await api.updateRowName(
+                    currentRowName,
+                    lastChange.previousRowName ?? ""
+                  );
+                }
+                onDataChange();
+              }
+            } catch (error) {
+              console.error("Error in undo operation:", error);
+              messageApi.error("撤銷操作失敗。請重試。");
+            } finally {
+              setIsUndoing(false);
+            }
+          }}
+        >
+          Undo
+        </Button>
+        <Button
+          icon={<RedoOutlined />}
+          disabled={!canRedo || isDataRefreshing || isUndoing || isRedoing}
+          loading={isRedoing}
+          onClick={async () => {
+            try {
+              setIsRedoing(true);
+              const lastRedo = redo();
+              if (lastRedo) {
+                if (lastRedo.type === "cell" && lastRedo.columnName) {
+                  await api.updateCell(
+                    lastRedo.rowName,
+                    lastRedo.columnName,
+                    lastRedo.nextValue ?? 0
+                  );
+                } else if (lastRedo.type === "annotation") {
+                  await api.updateAnnotation(
+                    lastRedo.rowName,
+                    lastRedo.nextAnnotation ?? ""
+                  );
+                } else if (lastRedo.type === "rowName") {
+                  const currentRowName =
+                    lastRedo.previousRowName ?? lastRedo.rowName;
+                  await api.updateRowName(
+                    currentRowName,
+                    lastRedo.nextRowName ?? ""
+                  );
+                }
+                onDataChange();
+              }
+            } catch (error) {
+              console.error("Error in redo operation:", error);
+              messageApi.error("重做操作失敗。請重試。");
+            } finally {
+              setIsRedoing(false);
+            }
+          }}
+        >
+          Redo
+        </Button>
+      </div>
       <table className="data-table w-full border-collapse">
         <thead>
           <tr>
@@ -507,6 +637,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
                       }
                       autoFocus
                       className="p-1 border rounded flex-1 w-full"
+                      disabled={isUpdatingRowName}
                       onBlur={handleRowNameUpdate}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
@@ -514,6 +645,10 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
                         }
                       }}
                     />
+                  </div>
+                ) : isUpdatingRowName ? (
+                  <div className="truncate opacity-50">
+                    <div className="animate-pulse">...</div>
                   </div>
                 ) : (
                   <div className="truncate">{row.name || "-"}</div>
@@ -542,6 +677,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
                     }
                     autoFocus
                     className="p-1 border rounded w-full"
+                    disabled={isUpdatingAnnotation}
                     onBlur={handleAnnotationUpdate}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -549,6 +685,10 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
                       }
                     }}
                   />
+                ) : isUpdatingAnnotation ? (
+                  <div className="text-wrap opacity-50">
+                    <div className="animate-pulse">...</div>
+                  </div>
                 ) : (
                   <div className="text-wrap">{row.annotation || ""}</div>
                 )}
@@ -580,6 +720,7 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
                         }
                         autoFocus
                         className="p-1 border rounded w-full"
+                        disabled={isUpdatingCell}
                         onBlur={handleCellUpdate}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
@@ -587,6 +728,10 @@ export const DataTable: React.FC<DataTableProps> = ({ data, onDataChange }) => {
                           }
                         }}
                       />
+                    </div>
+                  ) : isUpdatingCell ? (
+                    <div className="truncate opacity-50">
+                      <div className="animate-pulse">...</div>
                     </div>
                   ) : (
                     <div className="truncate">
