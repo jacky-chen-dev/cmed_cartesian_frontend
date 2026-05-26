@@ -14,20 +14,6 @@ export interface DataPoint {
   attributes: Record<Axis["name"], number>;
 }
 
-export interface CartesianPlaneConfig {
-  xPositive: Axis;
-  xNegative: Axis;
-  yPositive: Axis;
-  yNegative: Axis;
-}
-
-export interface PlotPoint {
-  x: number;
-  y: number;
-  name: string;
-  annotation: string;
-}
-
 export interface AxisConfigUpdateRequest {
   name: Axis["name"];
   xNegativeCriteriaId: Axis["id"];
@@ -39,5 +25,5 @@ export interface AxisConfigUpdateRequest {
 export type AxisConfigRecord = {
   id: Axis["id"];
   name: Axis["name"];
-  settings: CartesianPlaneConfig;
+  axis: Axis;
 };

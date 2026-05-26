@@ -3,7 +3,7 @@ import { AxisConfigRecord } from "./types";
 import { useAuth } from "./AuthContext";
 import useTableData from "./hooks/useTableData";
 import { DataTable } from "./components/DataTable";
-import { CartesianPlot } from "./components/CartesianPlot";
+import { BarChart } from "./components/BarChart";
 import PlotTabs from "./components/PlotTabs";
 
 function App() {
@@ -18,7 +18,6 @@ function App() {
   const [focusTabRecord, setFocusTabRecord] = useState<AxisConfigRecord>();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  // Toggle full-screen drawer
   const toggleDrawer = (record: AxisConfigRecord) => {
     setFocusTabRecord((prev) => {
       return prev ? undefined : record;
@@ -26,7 +25,6 @@ function App() {
     setIsDrawerOpen(!isDrawerOpen);
 
     if (isDrawerOpen) {
-      // prevent scrolling when the drawer is open
       document.body.style.overflow = "auto";
     } else {
       document.body.style.overflow = "hidden";
@@ -42,12 +40,10 @@ function App() {
       }
     };
 
-    // Add event listener when the drawer is open
     if (isDrawerOpen) {
       window.addEventListener("keydown", handleKeyDown);
     }
 
-    // Remove event listener on cleanup
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
@@ -56,7 +52,7 @@ function App() {
   return (
     <div className="container mx-auto px-4 py-8">
       <header className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">CMED Cartesian Plot</h1>
+        <h1 className="text-2xl font-bold">CMED Bar Chart</h1>
         <div className="flex items-center gap-4">
           <span>Welcome, {import.meta.env.VITE_NICKNAME || "admin"}</span>
           <button
@@ -88,28 +84,23 @@ function App() {
         </div>
       )}
 
-      {/* Full-screen drawer for the magnified plot */}
       {isDrawerOpen && focusTabRecord && (
-        <div className="fixed inset-0 bg-white bg-opacity-100 z-50 flex flex-col">
-          <div className="p-4 flex justify-between items-center">
-            <h2 className="text-xl font-bold text-white">
-              Magnified Cartesian Plot
-            </h2>
+        <div className="fixed inset-0 bg-white z-50 flex flex-col">
+          <div className="p-4 flex justify-between items-center bg-gray-100 border-b">
+            <h2 className="text-xl font-bold">{focusTabRecord.name}</h2>
             <button
               onClick={() => toggleDrawer(focusTabRecord)}
-              className="p-2 bg-red-500 text-white rounded hover:bg-red-600 focus:outline-none"
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 focus:outline-none"
             >
               Close
             </button>
           </div>
           <div className="flex-1 p-4">
-            <div className="w-full h-full">
-              <CartesianPlot
-                data={tableData}
-                settings={focusTabRecord.settings}
-                fullScreen={true}
-              />
-            </div>
+            <BarChart
+              data={tableData}
+              axis={focusTabRecord.axis}
+              fullScreen={true}
+            />
           </div>
         </div>
       )}

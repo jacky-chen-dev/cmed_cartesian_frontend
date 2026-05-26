@@ -84,22 +84,29 @@ export const api = {
 
   getAxisSettings: async (): Promise<AxisConfigRecord[]> => {
     const response = await axios.get(`${API_URL}/axis-settings`);
-    return response.data;
+    return response.data.map((record: any) => ({
+      id: record.id,
+      name: record.name,
+      axis: record.settings.xPositive,
+    }));
   },
 
   addAxisSetting: async (
     dto: AxisConfigUpdateRequest
-  ): Promise<AxisConfigRecord> => {
-    const response = await axios.post(`${API_URL}/axis-settings`, dto);
-    return response.data;
+  ): Promise<void> => {
+    await axios.post(`${API_URL}/axis-settings`, dto);
   },
 
   updateAxisSetting: async (
     id: AxisConfigRecord["id"],
     dto: AxisConfigUpdateRequest
   ): Promise<AxisConfigRecord> => {
-    const reponse = await axios.put(`${API_URL}/axis-settings/${id}`, dto);
-    return reponse.data;
+    const response = await axios.put(`${API_URL}/axis-settings/${id}`, dto);
+    return {
+      id: response.data.id,
+      name: response.data.name,
+      axis: response.data.settings.xPositive,
+    };
   },
 
   deleteAxisSetting: async (id: AxisConfigRecord["id"]): Promise<void> => {
